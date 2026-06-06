@@ -1,6 +1,7 @@
 "use client";
 import { useRef, MouseEvent, CSSProperties, ReactNode } from "react";
 import Link from "next/link";
+import { PulsingBorder } from "@paper-design/shaders-react";
 
 interface BtnProps {
   children: ReactNode;
@@ -42,6 +43,29 @@ export default function Btn({
     ...style,
   };
 
+  const innerContent = (
+    <>
+      {/* Animated shader border for primary buttons */}
+      {variant === "primary" && (
+        <span className="btn-shader-border" aria-hidden="true">
+          <PulsingBorder
+            colors={["#7c3aed", "#a78bfa", "#c4b5fd", "#818cf8"]}
+            colorBack="#07021c"
+            speed={0.65}
+            roundness={0.45}
+            thickness={0.055}
+            bloom={0.55}
+            style={{ width: "100%", height: "100%", display: "block" }}
+          />
+        </span>
+      )}
+      {/* Shimmer sweep on hover */}
+      <span className="btn-shimmer" aria-hidden="true" />
+      {/* Actual label sits above everything */}
+      <span className="btn-label">{children}</span>
+    </>
+  );
+
   if (href && !disabled) {
     return (
       <Link
@@ -51,7 +75,7 @@ export default function Btn({
         style={combinedStyle}
         onMouseDown={addRipple}
       >
-        {children}
+        {innerContent}
       </Link>
     );
   }
@@ -66,7 +90,7 @@ export default function Btn({
       onMouseDown={addRipple}
       onClick={disabled ? undefined : onClick}
     >
-      {children}
+      {innerContent}
     </button>
   );
 }

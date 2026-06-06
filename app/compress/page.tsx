@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { compress, IncidentCapsule } from "@/lib/drain";
 import Btn from "@/components/Btn";
 import { PulsingBorder } from "@paper-design/shaders-react";
@@ -21,10 +21,10 @@ const SAMPLE = `2024-03-15T14:22:01.123Z INFO  [api] GET /v1/health 200 3ms
 2024-03-15T14:22:12.001Z INFO  [api] GET /v1/health 200 2ms
 2024-03-15T14:22:13.334Z INFO  [api] GET /v1/health 200 2ms`;
 
-const ROLE_CONFIG: Record<string, { label: string; border: string; bg: string; glow: string; textColor: string }> = {
-  root_cause:  { label: "Root Cause",  border: "rgba(248,113,113,0.35)", bg: "rgba(248,113,113,0.06)", glow: "rgba(248,113,113,0.15)", textColor: "#f87171" },
-  trigger:     { label: "Trigger",     border: "rgba(251,191,36,0.35)",  bg: "rgba(251,191,36,0.06)",  glow: "rgba(251,191,36,0.12)",  textColor: "#fbbf24" },
-  consequence: { label: "Consequence", border: "rgba(96,165,250,0.35)",  bg: "rgba(96,165,250,0.06)",  glow: "rgba(96,165,250,0.12)",  textColor: "#60a5fa" },
+const ROLE_CONFIG: Record<string, { label: string; border: string; bg: string; glow: string; textColor: string; rgb: string }> = {
+  root_cause:  { label: "Root Cause",  border: "rgba(248,113,113,0.35)", bg: "rgba(248,113,113,0.06)", glow: "rgba(248,113,113,0.15)", textColor: "#f87171", rgb: "248,113,113" },
+  trigger:     { label: "Trigger",     border: "rgba(251,191,36,0.35)",  bg: "rgba(251,191,36,0.06)",  glow: "rgba(251,191,36,0.12)",  textColor: "#fbbf24", rgb: "251,191,36"  },
+  consequence: { label: "Consequence", border: "rgba(96,165,250,0.35)",  bg: "rgba(96,165,250,0.06)",  glow: "rgba(96,165,250,0.12)",  textColor: "#60a5fa", rgb: "96,165,250"  },
 };
 
 const STORAGE_KEY = "cypra_session";
@@ -57,6 +57,7 @@ export default function CompressPage() {
   const [sid, setSid] = useState("");
   const [copied, setCopied] = useState(false);
   const [restored, setRestored] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -82,7 +83,7 @@ export default function CompressPage() {
 
   const lines = input.split("\n").filter(l => l.trim()).length;
 
-  function run() {
+  const run = useCallback(() => {
     if (!input.trim()) return;
     setLoading(true); setAnalysis(null); setAnalyzeError(null); setRestored(false);
     setTimeout(() => {
@@ -90,7 +91,19 @@ export default function CompressPage() {
       setCapsule(result); setLoading(false); setView("visual");
       if (result.evidence.length > 0) runAnalysis(result, input);
     }, 350);
-  }
+  }, [input, service]);
+
+  // ⌘↵ or Ctrl+↵ keyboard shortcut
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        run();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [run]);
 
   async function runAnalysis(cap: IncidentCapsule, raw: string) {
     setAnalyzing(true); setAnalyzeError(null);
@@ -129,139 +142,275 @@ export default function CompressPage() {
     });
   }
 
+  // Drag-and-drop handlers
+  function onDragOver(e: React.DragEvent) { e.preventDefault(); setDragOver(true); }
+  function onDragLeave() { setDragOver(false); }
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault(); setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = evt => { if (evt.target?.result) setInput(String(evt.target.result)); };
+      reader.readAsText(file);
+    } else {
+      const text = e.dataTransfer.getData("text");
+      if (text) setInput(text);
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 58px)" }}>
 
       {/* ── Top bar ── */}
       <div style={{
         borderBottom: "1px solid rgba(255,255,255,0.05)",
-        padding: "0 24px", height: 52,
+        padding: "0 20px", height: 50,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        background: "rgba(5,5,12,0.8)",
-        backdropFilter: "blur(24px)",
+        background: "rgba(5,5,12,0.85)",
+        backdropFilter: "blur(32px) saturate(180%)",
+        WebkitBackdropFilter: "blur(32px) saturate(180%)",
         flexShrink: 0,
+        boxShadow: "inset 0 -1px 0 rgba(255,255,255,0.04)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <span style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#252338" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{
+            fontSize: "0.62rem", fontWeight: 700,
+            letterSpacing: "0.12em", textTransform: "uppercase", color: "#1e1c30",
+          }}>
             Compress
           </span>
 
-          <div style={{
+          {/* Service pill — double-bezel */}
+          <div className="service-pill" style={{
             display: "flex", alignItems: "center", gap: 8,
-            background: "rgba(255,255,255,0.03)",
+            background: "rgba(255,255,255,0.025)",
             backdropFilter: "blur(12px)",
             border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: 7, padding: "4px 12px",
+            borderRadius: 8, padding: "4px 12px 4px 10px",
           }}>
-            <span style={{ fontSize: "0.66rem", color: "#2e2c45" }}>service</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#2e2c45" strokeWidth="1.5">
+              <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" />
+            </svg>
+            <span style={{ fontSize: "0.62rem", color: "#2e2c45", letterSpacing: "0.04em" }}>service</span>
             <input
               value={service}
               onChange={e => setService(e.target.value)}
               placeholder="api"
               style={{
                 background: "transparent", border: "none", outline: "none",
-                color: "#a78bfa", fontSize: "0.78rem", width: 72,
-                fontFamily: "var(--font-mono)", padding: 0,
+                color: "#a78bfa", fontSize: "0.75rem", width: 68,
+                fontFamily: "var(--font-mono)", padding: 0, letterSpacing: "-0.01em",
               }}
             />
           </div>
 
           {lines > 0 && (
-            <span style={{ fontSize: "0.66rem", color: "#252338", fontFamily: "var(--font-mono)" }}>
+            <span style={{
+              fontSize: "0.62rem", color: "#1e1c30",
+              fontFamily: "var(--font-mono)", letterSpacing: "0.02em",
+            }}>
               {lines.toLocaleString()} lines
             </span>
           )}
           {restored && (
-            <span className="badge badge-purple" style={{ fontSize: "0.58rem", padding: "2px 7px", backdropFilter: "blur(8px)" }}>
+            <span className="badge badge-purple" style={{ fontSize: "0.57rem", padding: "2px 7px" }}>
               restored
             </span>
           )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {sid && (
-            <span style={{ fontSize: "0.62rem", color: "#1a1a2a", fontFamily: "var(--font-mono)" }}>
+            <span style={{ fontSize: "0.58rem", color: "#15152a", fontFamily: "var(--font-mono)" }}>
               {sid.slice(0, 8)}
             </span>
           )}
           <Btn variant="text" onClick={() => { setInput(SAMPLE); setCapsule(null); setAnalysis(null); setAnalyzeError(null); setRestored(false); }}>
-            load sample
+            sample
           </Btn>
           {(input || capsule) && <Btn variant="text" onClick={clearAll}>clear</Btn>}
           <Btn
             variant="primary"
             onClick={run}
             disabled={!input.trim() || loading}
-            style={{ fontSize: "0.8rem", padding: "6px 20px" }}
+            style={{ fontSize: "0.78rem", padding: "6px 18px" }}
           >
             {loading ? "compressing…" : "Compress"}
           </Btn>
         </div>
       </div>
 
-      {/* ── Split ── */}
+      {/* ── Split pane ── */}
       <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1px 1fr", minHeight: 0 }}>
 
-        {/* Left */}
-        <div style={{ overflow: "auto", display: "flex", flexDirection: "column" }}>
+        {/* ── Left: Input ── */}
+        <div style={{
+          overflow: "hidden", display: "flex", flexDirection: "column",
+          background: dragOver ? "rgba(124,58,237,0.04)" : "transparent",
+          transition: "background 0.2s",
+        }}>
+          {/* Left header */}
           <div style={{
-            padding: "10px 20px",
+            padding: "9px 18px",
             borderBottom: "1px solid rgba(255,255,255,0.04)",
-            display: "flex", alignItems: "center", gap: 8,
-            background: "rgba(5,5,12,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            background: "rgba(5,5,12,0.6)",
+            flexShrink: 0,
           }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#1a1a28" }} />
-            <span style={{ fontSize: "0.62rem", color: "#252338", fontFamily: "var(--font-mono)" }}>
-              stdin · raw log stream
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                width: 5, height: 5, borderRadius: "50%",
+                background: input ? "#a78bfa" : "#1a1a28",
+                boxShadow: input ? "0 0 6px rgba(167,139,250,0.5)" : "none",
+                transition: "all 0.4s",
+              }} />
+              <span style={{ fontSize: "0.59rem", color: "#1e1c30", fontFamily: "var(--font-mono)", letterSpacing: "0.04em" }}>
+                stdin · raw log stream
+              </span>
+            </div>
+            <span style={{
+              fontSize: "0.56rem", color: "#141326",
+              fontFamily: "var(--font-mono)", letterSpacing: "0.02em",
+            }}>
+              drop file or paste
             </span>
           </div>
-          <textarea
-            ref={taRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            className="minimal-textarea"
-            placeholder={"Paste log output here…\n\n2024-03-15T14:22:11Z ERROR [db] connection pool exhausted\n2024-03-15T14:22:11Z ERROR [api] 500 Internal Server Error"}
-            style={{ flex: 1, padding: "20px 24px", minHeight: 0 }}
-            spellCheck={false}
-          />
+
+          {/* Double-Bezel textarea wrapper */}
+          <div
+            className="log-input-shell"
+            style={{
+              flex: 1, margin: "12px",
+              borderRadius: 14,
+              background: dragOver
+                ? "rgba(124,58,237,0.06)"
+                : "rgba(255,255,255,0.018)",
+              border: `1px solid ${dragOver ? "rgba(124,58,237,0.4)" : "rgba(255,255,255,0.06)"}`,
+              padding: 2,
+              display: "flex", flexDirection: "column",
+              minHeight: 0,
+              transition: "border-color 0.3s, background 0.3s",
+            }}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+          >
+            {/* Inner core */}
+            <div
+              className="log-input-core"
+              style={{
+                flex: 1, borderRadius: 12,
+                background: "rgba(4,2,16,0.97)",
+                border: "1px solid rgba(255,255,255,0.04)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -1px 0 rgba(0,0,0,0.2)",
+                display: "flex", flexDirection: "column",
+                overflow: "hidden", minHeight: 0,
+              }}
+            >
+              {/* Textarea */}
+              <textarea
+                ref={taRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder={"Paste log output here…\n\n  2024-03-15T14:22:11Z ERROR [db] connection pool exhausted\n  2024-03-15T14:22:11Z ERROR [api] 500 Internal Server Error\n\nOr click 'sample' in the toolbar above."}
+                style={{
+                  flex: 1,
+                  padding: "20px 22px",
+                  minHeight: 0,
+                  background: "transparent",
+                  border: "none", outline: "none", resize: "none",
+                  color: "#c8c4dc",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "12.5px", lineHeight: "1.9",
+                  caretColor: "#a78bfa",
+                }}
+                spellCheck={false}
+              />
+
+              {/* Bottom status bar */}
+              <div style={{
+                borderTop: "1px solid rgba(255,255,255,0.04)",
+                padding: "7px 16px",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                background: "rgba(0,0,0,0.28)",
+                flexShrink: 0,
+              }}>
+                <span style={{
+                  fontSize: "0.58rem", color: "#1a1828",
+                  fontFamily: "var(--font-mono)", letterSpacing: "0.02em",
+                }}>
+                  {lines > 0
+                    ? `${lines.toLocaleString()} lines · ${input.length.toLocaleString()} chars`
+                    : "waiting for input"}
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: "0.56rem", color: "#141326" }}>compress</span>
+                  <span style={{
+                    fontSize: "0.55rem", color: "#2e2c45",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 4, padding: "2px 6px",
+                    fontFamily: "var(--font-mono)",
+                  }}>
+                    ⌘↵
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Divider */}
+        {/* ── Divider ── */}
         <div style={{ background: "rgba(255,255,255,0.04)" }} />
 
-        {/* Right */}
+        {/* ── Right: Output ── */}
         <div style={{ overflow: "auto" }}>
+
           {/* Sticky output header */}
           <div style={{
-            padding: "10px 20px",
+            padding: "9px 18px",
             borderBottom: "1px solid rgba(255,255,255,0.04)",
             display: "flex", alignItems: "center", justifyContent: "space-between",
             position: "sticky", top: 0,
-            background: "rgba(5,5,12,0.85)",
-            backdropFilter: "blur(20px)",
+            background: "rgba(5,5,12,0.9)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
             zIndex: 10,
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{
-                width: 6, height: 6, borderRadius: "50%",
+                width: 5, height: 5, borderRadius: "50%",
                 background: capsule ? "#7c3aed" : "#1a1a28",
-                boxShadow: capsule ? "0 0 8px #7c3aed" : "none",
+                boxShadow: capsule ? "0 0 8px rgba(124,58,237,0.8)" : "none",
                 transition: "all 0.4s",
               }} />
-              <span style={{ fontSize: "0.62rem", color: "#252338", fontFamily: "var(--font-mono)" }}>
+              <span style={{ fontSize: "0.59rem", color: "#1e1c30", fontFamily: "var(--font-mono)", letterSpacing: "0.04em" }}>
                 stdout · IncidentCapsule
               </span>
+              {capsule && !loading && (
+                <span style={{
+                  fontSize: "0.56rem", color: "#7c3aed",
+                  background: "rgba(124,58,237,0.1)",
+                  border: "1px solid rgba(124,58,237,0.2)",
+                  borderRadius: 4, padding: "1px 7px",
+                  fontFamily: "var(--font-mono)",
+                }}>
+                  {capsule.compression}× compression
+                </span>
+              )}
             </div>
             {capsule && (
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
                 {(["visual", "json"] as const).map(v => (
                   <button key={v} onClick={() => setView(v)} style={{
                     background: view === v ? "rgba(124,58,237,0.18)" : "transparent",
                     backdropFilter: view === v ? "blur(8px)" : "none",
+                    WebkitBackdropFilter: view === v ? "blur(8px)" : "none",
                     border: view === v ? "1px solid rgba(167,139,250,0.25)" : "1px solid transparent",
-                    borderRadius: 5, padding: "3px 10px",
-                    fontSize: "0.62rem", fontWeight: 600,
-                    color: view === v ? "#a78bfa" : "#2e2c45",
+                    borderRadius: 5, padding: "3px 9px",
+                    fontSize: "0.59rem", fontWeight: 600,
+                    color: view === v ? "#a78bfa" : "#252338",
                     cursor: "pointer", letterSpacing: "0.06em", textTransform: "uppercase",
                     transition: "all 0.2s",
                   }}>
@@ -270,8 +419,8 @@ export default function CompressPage() {
                 ))}
                 <button onClick={copyJson} style={{
                   background: "transparent", border: "none",
-                  fontSize: "0.62rem", color: copied ? "#a78bfa" : "#2e2c45",
-                  cursor: "pointer", marginLeft: 4, transition: "color 0.2s",
+                  fontSize: "0.59rem", color: copied ? "#a78bfa" : "#252338",
+                  cursor: "pointer", marginLeft: 2, transition: "color 0.2s", padding: "3px 6px",
                 }}>
                   {copied ? "✓ copied" : "copy"}
                 </button>
@@ -279,41 +428,55 @@ export default function CompressPage() {
             )}
           </div>
 
-          <div style={{ padding: "24px" }}>
-            {/* Empty state */}
+          <div style={{ padding: "20px 20px 32px" }}>
+
+            {/* ── Empty state ── */}
             {!capsule && !loading && (
-              <div style={{ paddingTop: 48, maxWidth: 300 }}>
+              <div style={{ paddingTop: 40 }}>
+                {/* Double-bezel icon */}
                 <div style={{
-                  width: 48, height: 48, borderRadius: 13,
-                  background: "rgba(255,255,255,0.03)",
-                  backdropFilter: "blur(12px)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  marginBottom: 20,
+                  width: 52, height: 52, borderRadius: 14,
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  padding: 3, marginBottom: 20,
                 }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2e2c45" strokeWidth="1.5">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                  </svg>
+                  <div style={{
+                    width: "100%", height: "100%", borderRadius: 11,
+                    background: "rgba(5,2,18,0.9)",
+                    border: "1px solid rgba(255,255,255,0.04)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2e2c45" strokeWidth="1.5">
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                  </div>
                 </div>
-                <p style={{ color: "#252338", fontSize: "0.85rem", lineHeight: 1.85 }}>
-                  Paste a log stream on the left and hit{" "}
+                <p style={{ color: "#252338", fontSize: "0.85rem", lineHeight: 1.9, maxWidth: 280, marginBottom: 14 }}>
+                  Paste a log stream and hit{" "}
                   <span style={{ color: "#2e2c45" }}>Compress</span>.
                   Cypra groups lines into templates, tags anomalies, and returns a structured IncidentCapsule.
                 </p>
-                <p style={{ color: "#7c3aed", fontSize: "0.72rem", marginTop: 16, opacity: 0.6 }}>
-                  ✦ Claude AI analyzes evidence roles automatically
-                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{
+                    width: 4, height: 4, borderRadius: "50%",
+                    background: "#7c3aed", boxShadow: "0 0 6px rgba(124,58,237,0.6)",
+                    flexShrink: 0,
+                  }} />
+                  <p style={{ color: "#1e1c30", fontSize: "0.72rem", margin: 0 }}>
+                    Claude AI annotates evidence roles automatically
+                  </p>
+                </div>
               </div>
             )}
 
-            {/* Loading shimmer */}
+            {/* ── Loading shimmer ── */}
             {loading && (
-              <div style={{ paddingTop: 32, display: "flex", flexDirection: "column", gap: 12 }}>
-                {[80, 55, 70, 45, 62, 35].map((w, i) => (
+              <div style={{ paddingTop: 28, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[78, 52, 68, 40, 60, 32, 50].map((w, i) => (
                   <div key={i} style={{
-                    height: 9, width: `${w}%`,
+                    height: 8, width: `${w}%`,
                     background: "rgba(255,255,255,0.04)",
-                    backdropFilter: "blur(4px)",
                     borderRadius: 4,
                     animation: `shimmer 1.3s ease-in-out ${i * 0.08}s infinite`,
                   }} />
@@ -321,59 +484,104 @@ export default function CompressPage() {
               </div>
             )}
 
-            {/* JSON view */}
+            {/* ── JSON view ── */}
             {capsule && !loading && view === "json" && (
-              <pre style={{ color: "#2e2c45", fontFamily: "var(--font-mono)", fontSize: "11px", lineHeight: 1.9, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-                {JSON.stringify(capsule, null, 2)}
-              </pre>
+              <div style={{
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.018)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                padding: 2,
+              }}>
+                <div style={{
+                  borderRadius: 10,
+                  background: "#03030d",
+                  border: "1px solid rgba(255,255,255,0.04)",
+                  padding: "18px 20px",
+                }}>
+                  <pre style={{
+                    color: "#2e2c45", fontFamily: "var(--font-mono)",
+                    fontSize: "11px", lineHeight: 2,
+                    whiteSpace: "pre-wrap", wordBreak: "break-all", margin: 0,
+                  }}>
+                    {JSON.stringify(capsule, null, 2)}
+                  </pre>
+                </div>
+              </div>
             )}
 
-            {/* Visual view */}
+            {/* ── Visual view ── */}
             {capsule && !loading && view === "visual" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-                {/* Stats row */}
+                {/* Stats row — double-bezel grid */}
                 <div style={{
-                  display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
-                  gap: 1, borderRadius: 12, overflow: "hidden",
+                  borderRadius: 14,
+                  background: "rgba(255,255,255,0.018)",
                   border: "1px solid rgba(255,255,255,0.06)",
-                  background: "rgba(255,255,255,0.03)",
-                  backdropFilter: "blur(16px)",
+                  padding: 2,
                 }}>
-                  {[
-                    { label: "service", val: capsule.service },
-                    { label: "compression", val: `${capsule.compression}×` },
-                    { label: "lines", val: capsule.routine_summary.total_lines.toLocaleString() },
-                    { label: "templates", val: String(capsule.routine_summary.templates) },
-                  ].map((s, i) => (
-                    <div key={s.label} style={{
-                      background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.015)",
-                      padding: "14px 16px",
-                    }}>
-                      <div style={{ fontSize: "0.58rem", color: "#252338", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 5, fontWeight: 600 }}>
-                        {s.label}
+                  <div style={{
+                    borderRadius: 12,
+                    display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
+                    overflow: "hidden",
+                    background: "#03030e",
+                    border: "1px solid rgba(255,255,255,0.04)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+                  }}>
+                    {[
+                      { label: "service",     val: capsule.service,                                       accent: "#c4b5fd" },
+                      { label: "compression", val: `${capsule.compression}×`,                             accent: "#7c3aed" },
+                      { label: "lines",       val: capsule.routine_summary.total_lines.toLocaleString(),  accent: "#c4b5fd" },
+                      { label: "templates",   val: String(capsule.routine_summary.templates),             accent: "#c4b5fd" },
+                    ].map((s, i) => (
+                      <div key={s.label} style={{
+                        padding: "14px 16px",
+                        borderRight: i < 3 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                        background: i === 1 ? "rgba(124,58,237,0.06)" : "transparent",
+                      }}>
+                        <div style={{
+                          fontSize: "0.54rem", color: "#1e1c30",
+                          textTransform: "uppercase", letterSpacing: "0.1em",
+                          marginBottom: 7, fontWeight: 600,
+                        }}>
+                          {s.label}
+                        </div>
+                        <div style={{
+                          fontSize: "0.95rem", fontWeight: 700,
+                          color: s.accent, fontFamily: "var(--font-mono)",
+                          letterSpacing: "-0.02em",
+                        }}>
+                          {s.val}
+                        </div>
                       </div>
-                      <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#c4b5fd", fontFamily: "var(--font-mono)", letterSpacing: "-0.02em" }}>
-                        {s.val}
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
-                {/* Window */}
+                {/* Window badge */}
                 <div style={{
-                  background: "rgba(255,255,255,0.025)", backdropFilter: "blur(12px)",
+                  background: "rgba(255,255,255,0.02)",
+                  backdropFilter: "blur(12px)",
                   border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 9, padding: "11px 16px",
+                  borderRadius: 9, padding: "10px 16px",
                   display: "flex", alignItems: "center", gap: 12,
                 }}>
-                  <span style={{ fontSize: "0.6rem", color: "#252338", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600, flexShrink: 0 }}>window</span>
-                  <span style={{ fontSize: "0.76rem", color: "#2e2c45", fontFamily: "var(--font-mono)" }}>{capsule.window}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#252338" strokeWidth="1.5">
+                      <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+                    </svg>
+                    <span style={{ fontSize: "0.56rem", color: "#252338", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600 }}>
+                      window
+                    </span>
+                  </div>
+                  <span style={{ fontSize: "0.75rem", color: "#2e2c45", fontFamily: "var(--font-mono)" }}>
+                    {capsule.window}
+                  </span>
                 </div>
 
                 {/* Claude Analysis card */}
                 <div style={{ position: "relative", overflow: "hidden", borderRadius: 14 }}>
-                  {/* PulsingBorder as animated background */}
+                  {/* PulsingBorder shell */}
                   {(analyzing || analysis) && (
                     <div style={{ position: "absolute", inset: 0 }}>
                       <PulsingBorder
@@ -390,52 +598,70 @@ export default function CompressPage() {
 
                   <div style={{
                     position: "relative", zIndex: 1,
-                    background: "rgba(12,6,30,0.85)",
+                    background: analyzing || analysis ? "rgba(10,5,28,0.88)" : "rgba(255,255,255,0.02)",
                     backdropFilter: "blur(20px)",
-                    border: "1px solid rgba(124,58,237,0.2)",
+                    WebkitBackdropFilter: "blur(20px)",
+                    border: analyzing || analysis ? "1px solid rgba(124,58,237,0.2)" : "1px solid rgba(255,255,255,0.06)",
                     borderRadius: 14, overflow: "hidden",
-                    margin: 1,
+                    margin: analyzing || analysis ? 1 : 0,
                   }}>
                     <div style={{
-                      padding: "12px 18px",
-                      borderBottom: "1px solid rgba(124,58,237,0.12)",
+                      padding: "11px 16px",
+                      borderBottom: "1px solid rgba(124,58,237,0.1)",
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                     }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                         <div style={{
                           width: 20, height: 20, borderRadius: 6,
-                          background: "rgba(124,58,237,0.2)",
-                          border: "1px solid rgba(167,139,250,0.3)",
-                          backdropFilter: "blur(8px)",
+                          background: "rgba(124,58,237,0.18)",
+                          border: "1px solid rgba(167,139,250,0.25)",
                           display: "flex", alignItems: "center", justifyContent: "center",
                         }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2">
-                            <circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12" />
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
                           </svg>
                         </div>
-                        <span style={{ fontSize: "0.68rem", color: "#a78bfa", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                        <span style={{
+                          fontSize: "0.64rem", color: "#a78bfa",
+                          fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+                        }}>
                           Claude Analysis
                         </span>
                         {analyzing && (
-                          <span style={{ fontSize: "0.6rem", color: "#5a3a80", letterSpacing: "0.05em" }}>thinking…</span>
+                          <span style={{
+                            fontSize: "0.58rem", color: "#5a3a80", letterSpacing: "0.04em",
+                            display: "flex", alignItems: "center", gap: 5,
+                          }}>
+                            <span style={{
+                              width: 5, height: 5, borderRadius: "50%",
+                              background: "#7c3aed",
+                              animation: "glow-pulse 1.4s ease-in-out infinite",
+                              display: "inline-block",
+                            }} />
+                            thinking…
+                          </span>
                         )}
                       </div>
                       {analyzeError && !analyzing && (
                         <button onClick={() => capsule && runAnalysis(capsule, input)} style={{
-                          background: "none", border: "none",
-                          fontSize: "0.65rem", color: "#7c3aed", cursor: "pointer",
+                          background: "rgba(124,58,237,0.1)",
+                          border: "1px solid rgba(124,58,237,0.2)",
+                          borderRadius: 5, padding: "3px 9px",
+                          fontSize: "0.62rem", color: "#7c3aed", cursor: "pointer",
+                          transition: "all 0.2s",
                         }}>
                           retry ↺
                         </button>
                       )}
                     </div>
 
-                    <div style={{ padding: "16px 18px" }}>
+                    <div style={{ padding: "14px 16px" }}>
                       {analyzing && !analysis && (
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {[75, 90, 60].map((w, i) => (
                             <div key={i} style={{
-                              height: 9, width: `${w}%`,
+                              height: 8, width: `${w}%`,
                               background: "rgba(124,58,237,0.1)",
                               borderRadius: 4,
                               animation: `shimmer 1.5s ease-in-out ${i * 0.15}s infinite`,
@@ -444,17 +670,26 @@ export default function CompressPage() {
                         </div>
                       )}
                       {analyzeError && !analyzing && (
-                        <div style={{ padding: "10px 14px", background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, backdropFilter: "blur(8px)" }}>
-                          <p style={{ fontSize: "0.75rem", color: "#f87171", margin: 0, lineHeight: 1.6 }}>{analyzeError}</p>
+                        <div style={{
+                          padding: "10px 14px",
+                          background: "rgba(248,113,113,0.07)",
+                          border: "1px solid rgba(248,113,113,0.18)",
+                          borderRadius: 8,
+                        }}>
+                          <p style={{ fontSize: "0.74rem", color: "#f87171", margin: 0, lineHeight: 1.6 }}>
+                            {analyzeError}
+                          </p>
                         </div>
                       )}
                       {analysis?.narrative && (
-                        <p style={{ fontSize: "0.83rem", color: "#7a7898", lineHeight: 1.85, margin: 0 }}>
+                        <p style={{ fontSize: "0.82rem", color: "#7a7898", lineHeight: 1.88, margin: 0 }}>
                           {analysis.narrative}
                         </p>
                       )}
                       {!analyzing && !analyzeError && !analysis && capsule.evidence.length === 0 && (
-                        <p style={{ fontSize: "0.75rem", color: "#252338", margin: 0 }}>No anomalies found in this log stream.</p>
+                        <p style={{ fontSize: "0.74rem", color: "#252338", margin: 0 }}>
+                          No anomalies found in this log stream.
+                        </p>
                       )}
                     </div>
                   </div>
@@ -463,55 +698,74 @@ export default function CompressPage() {
                 {/* Evidence cards */}
                 {capsule.evidence.length > 0 && (
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                      <span style={{ fontSize: "0.62rem", color: "#252338", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600 }}>Evidence</span>
-                      <span style={{ fontSize: "0.62rem", color: "#252338", fontFamily: "var(--font-mono)" }}>
+                    <div style={{
+                      display: "flex", alignItems: "center",
+                      justifyContent: "space-between", marginBottom: 12,
+                    }}>
+                      <span style={{
+                        fontSize: "0.58rem", color: "#252338",
+                        textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600,
+                      }}>
+                        Evidence
+                      </span>
+                      <span style={{
+                        fontSize: "0.58rem", color: "#1e1c30",
+                        fontFamily: "var(--font-mono)",
+                      }}>
                         {capsule.evidence.length} lines extracted
                       </span>
                     </div>
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {getEnrichedEvidence().map((ev, i) => {
                         const cfg = ROLE_CONFIG[ev.role] ?? ROLE_CONFIG.consequence;
                         return (
-                          <div key={i} style={{
-                            background: cfg.bg,
-                            backdropFilter: "blur(20px) saturate(160%)",
-                            WebkitBackdropFilter: "blur(20px) saturate(160%)",
-                            border: `1px solid ${cfg.border}`,
-                            borderLeft: `3px solid ${cfg.textColor}`,
-                            borderRadius: 12,
-                            padding: "14px 18px",
-                            boxShadow: `0 4px 20px ${cfg.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`,
-                            transition: "transform 0.2s, box-shadow 0.2s",
-                          }}
-                          onMouseEnter={e => {
-                            (e.currentTarget as HTMLDivElement).style.transform = "translateX(3px)";
-                            (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 30px ${cfg.glow}, inset 0 1px 0 rgba(255,255,255,0.08)`;
-                          }}
-                          onMouseLeave={e => {
-                            (e.currentTarget as HTMLDivElement).style.transform = "";
-                            (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 20px ${cfg.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`;
-                          }}
+                          <div
+                            key={i}
+                            style={{
+                              borderRadius: 12,
+                              background: cfg.bg,
+                              backdropFilter: "blur(20px) saturate(160%)",
+                              WebkitBackdropFilter: "blur(20px) saturate(160%)",
+                              border: `1px solid ${cfg.border}`,
+                              borderLeft: `3px solid ${cfg.textColor}`,
+                              padding: "13px 16px",
+                              boxShadow: `0 4px 20px ${cfg.glow}, inset 0 1px 0 rgba(255,255,255,0.05)`,
+                              transition: "transform 0.2s cubic-bezier(.22,1,.36,1), box-shadow 0.2s",
+                              cursor: "default",
+                            }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLDivElement).style.transform = "translateX(3px)";
+                              (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 32px ${cfg.glow}, inset 0 1px 0 rgba(255,255,255,0.08)`;
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLDivElement).style.transform = "";
+                              (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 20px ${cfg.glow}, inset 0 1px 0 rgba(255,255,255,0.05)`;
+                            }}
                           >
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9 }}>
                               <span style={{
-                                fontSize: "0.62rem", fontWeight: 700,
+                                fontSize: "0.59rem", fontWeight: 700,
                                 letterSpacing: "0.08em", textTransform: "uppercase",
-                                padding: "3px 9px", borderRadius: 999,
-                                background: `rgba(${cfg.textColor === "#f87171" ? "248,113,113" : cfg.textColor === "#fbbf24" ? "251,191,36" : "96,165,250"},0.15)`,
+                                padding: "2px 8px", borderRadius: 999,
+                                background: `rgba(${cfg.rgb},0.14)`,
                                 color: cfg.textColor,
                                 border: `1px solid ${cfg.border}`,
-                                backdropFilter: "blur(4px)",
                               }}>
                                 {cfg.label}
                               </span>
-                              <span style={{ fontSize: "0.6rem", color: "#2e2c45", fontFamily: "var(--font-mono)" }}>
+                              <span style={{
+                                fontSize: "0.57rem", color: "#2e2c45",
+                                fontFamily: "var(--font-mono)",
+                              }}>
                                 line {ev.line.toLocaleString()}
                               </span>
                             </div>
 
-                            <div style={{ fontSize: "0.77rem", color: "#7a7898", fontFamily: "var(--font-mono)", lineHeight: 1.65, wordBreak: "break-all" }}>
+                            <div style={{
+                              fontSize: "0.75rem", color: "#7a7898",
+                              fontFamily: "var(--font-mono)", lineHeight: 1.65, wordBreak: "break-all",
+                            }}>
                               {ev.text}
                             </div>
 
@@ -519,7 +773,7 @@ export default function CompressPage() {
                               <div style={{
                                 marginTop: 10, paddingTop: 10,
                                 borderTop: `1px solid ${cfg.border}`,
-                                fontSize: "0.72rem", color: "#45426a", lineHeight: 1.7,
+                                fontSize: "0.71rem", color: "#45426a", lineHeight: 1.7,
                               }}>
                                 {ev.explanation}
                               </div>
@@ -533,13 +787,12 @@ export default function CompressPage() {
 
                 {capsule.evidence.length === 0 && (
                   <div style={{
-                    padding: "28px", textAlign: "center",
+                    padding: "24px",
                     background: "rgba(255,255,255,0.02)",
-                    backdropFilter: "blur(12px)",
                     border: "1px solid rgba(255,255,255,0.05)",
-                    borderRadius: 12,
+                    borderRadius: 12, textAlign: "center",
                   }}>
-                    <p style={{ color: "#252338", fontSize: "0.82rem", lineHeight: 1.8 }}>
+                    <p style={{ color: "#252338", fontSize: "0.82rem", lineHeight: 1.8, margin: 0 }}>
                       No anomalies detected. Try logs containing ERROR, WARN, exception, or timeout messages.
                     </p>
                   </div>
