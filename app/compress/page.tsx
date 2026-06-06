@@ -27,8 +27,6 @@ const ROLE_CONFIG: Record<string, { label: string; border: string; bg: string; g
   consequence: { label: "Consequence", border: "rgba(96,165,250,0.35)",  bg: "rgba(96,165,250,0.06)",  glow: "rgba(96,165,250,0.12)",  textColor: "#60a5fa", rgb: "96,165,250"  },
 };
 
-const STORAGE_KEY = "cypra_session";
-
 function getSession() {
   if (typeof window === "undefined") return "";
   const k = "cypra_sid";
@@ -37,9 +35,6 @@ function getSession() {
   return id;
 }
 
-interface SavedSession {
-  input: string; service: string; capsule: IncidentCapsule; analysis: ClaudeAnalysis | null; savedAt: number;
-}
 interface ClaudeAnalysis {
   narrative: string;
   evidence: { index: number; role: string; explanation: string }[];
@@ -56,36 +51,18 @@ export default function CompressPage() {
   const [view, setView] = useState<"visual" | "json">("visual");
   const [sid, setSid] = useState("");
   const [copied, setCopied] = useState(false);
-  const [restored, setRestored] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setSid(getSession());
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const saved: SavedSession = JSON.parse(raw);
-        if (Date.now() - saved.savedAt < 86_400_000) {
-          setInput(saved.input); setService(saved.service);
-          setCapsule(saved.capsule); setAnalysis(saved.analysis); setRestored(true);
-        }
-      }
-    } catch { /* ignore */ }
   }, []);
-
-  useEffect(() => {
-    if (!capsule) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ input, service, capsule, analysis, savedAt: Date.now() }));
-    } catch { /* ignore */ }
-  }, [capsule, analysis, input, service]);
 
   const lines = input.split("\n").filter(l => l.trim()).length;
 
   const run = useCallback(() => {
     if (!input.trim()) return;
-    setLoading(true); setAnalysis(null); setAnalyzeError(null); setRestored(false);
+    setLoading(true); setAnalysis(null); setAnalyzeError(null);
     setTimeout(() => {
       const result = compress(input, service || "service");
       setCapsule(result); setLoading(false); setView("visual");
@@ -130,8 +107,7 @@ export default function CompressPage() {
   }
 
   function clearAll() {
-    setInput(""); setCapsule(null); setAnalysis(null); setAnalyzeError(null); setRestored(false);
-    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    setInput(""); setCapsule(null); setAnalysis(null); setAnalyzeError(null);
   }
 
   function getEnrichedEvidence() {
@@ -213,11 +189,6 @@ export default function CompressPage() {
               {lines.toLocaleString()} lines
             </span>
           )}
-          {restored && (
-            <span className="badge badge-purple" style={{ fontSize: "0.57rem", padding: "2px 7px" }}>
-              restored
-            </span>
-          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -226,7 +197,7 @@ export default function CompressPage() {
               {sid.slice(0, 8)}
             </span>
           )}
-          <Btn variant="text" onClick={() => { setInput(SAMPLE); setCapsule(null); setAnalysis(null); setAnalyzeError(null); setRestored(false); }}>
+          <Btn variant="text" onClick={() => { setInput(SAMPLE); setCapsule(null); setAnalysis(null); setAnalyzeError(null); }}>
             sample
           </Btn>
           {(input || capsule) && <Btn variant="text" onClick={clearAll}>clear</Btn>}
