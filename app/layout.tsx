@@ -4,6 +4,7 @@ import "./globals.css";
 import Nav from "@/components/Nav";
 import GridBackground from "@/components/GridBackground";
 import CursorGlow from "@/components/CursorGlow";
+import ScrollReveal from "@/components/ScrollReveal";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -31,10 +32,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable}`} data-scroll-behavior="smooth">
       <body className="min-h-screen flex flex-col">
         <GridBackground />
         <CursorGlow />
+        <ScrollReveal />
         <Nav />
         <main className="flex-1 relative z-10">{children}</main>
       </body>
