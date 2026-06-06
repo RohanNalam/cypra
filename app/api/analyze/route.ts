@@ -37,25 +37,25 @@ Time window: ${capsule.window}
 The log parser identified these ${capsule.evidence.length} anomalous lines as evidence:
 ${evidenceList}
 
-Analyze this incident evidence and return a JSON object with exactly this structure:
+Analyze this incident evidence and return a JSON object with exactly this structure (no markdown, no code fences, raw JSON only):
 {
-  "narrative": "2-3 sentence plain-English explanation of what happened — what caused it, what triggered it, and what the impact was",
+  "narrative": "2-3 sentence plain-English explanation of what happened",
   "evidence": [
     {
       "index": 1,
-      "role": "root_cause" | "trigger" | "consequence",
+      "role": "root_cause",
       "explanation": "one sentence explaining why this line has this role"
     }
   ]
 }
 
 Rules:
-- Assign exactly one role per evidence item
+- "role" must be exactly one of these three strings: "root_cause", "trigger", or "consequence"
 - root_cause: the underlying failure (exhausted resource, crashed process, bad config)
 - trigger: the event that exposed or initiated the failure
 - consequence: downstream effects or symptoms
-- If fewer than 3 distinct roles are present, that's fine — assign the most accurate role
-- Return only valid JSON, no markdown fences`;
+- Include one entry per evidence item, numbered 1 through ${capsule.evidence.length}
+- Output raw JSON only — no markdown fences, no explanation, no extra text`;
 
     const message = await client.messages.create({
       model: "claude-opus-4-8",
@@ -69,18 +69,30 @@ Rules:
       return NextResponse.json({ error: "No text response from Claude" }, { status: 500 });
     }
 
+    // Strip markdown code fences if present, then extract JSON object
+    let rawText = textBlock.text.trim();
+    rawText = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+
     let parsed;
     try {
-      parsed = JSON.parse(textBlock.text.trim());
+      parsed = JSON.parse(rawText);
     } catch {
-      const match = textBlock.text.match(/\{[\s\S]*\}/);
+      // Last-resort: grab the first {...} block
+      const match = rawText.match(/\{[\s\S]*\}/);
       if (!match) {
         return NextResponse.json(
-          { error: `Could not parse Claude response: ${textBlock.text.slice(0, 200)}` },
+          { error: `Could not parse Claude response: ${rawText.slice(0, 300)}` },
           { status: 500 }
         );
       }
-      parsed = JSON.parse(match[0]);
+      try {
+        parsed = JSON.parse(match[0]);
+      } catch (e2) {
+        return NextResponse.json(
+          { error: `Malformed JSON from Claude: ${e2 instanceof Error ? e2.message : e2}` },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({ analysis: parsed });
