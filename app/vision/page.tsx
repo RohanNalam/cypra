@@ -1,512 +1,219 @@
-import Link from "next/link";
-
-const capsuleExample = `{
-  "service": "api",
-  "window": "14:22:11 to 15:22:11",
-  "compression": 8021,
-  "evidence": [
-    {
-      "role": "root_cause",
-      "line": 412847,
-      "text": "psycopg2.OperationalError: pool exhausted"
-    },
-    {
-      "role": "trigger",
-      "line": 412831,
-      "text": "pool acquire 480ms (threshold: 200ms)"
-    },
-    {
-      "role": "consequence",
-      "line": 412854,
-      "text": "pool exhausted, queue=18, timeout=30s"
-    }
-  ],
-  "routine_summary": {
-    "total_lines": 1085399,
-    "templates": 15
-  }
-}`;
+import Btn from "@/components/Btn";
 
 export default function VisionPage() {
   return (
-    <div className="max-w-5xl mx-auto px-6 py-20 space-y-32">
+    <article style={{ position: "relative", zIndex: 1, padding: "80px 24px 140px" }}>
+      <div className="prose">
 
-      {/* Hero */}
-      <section className="text-center relative">
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse 80% 40% at 50% 0%, #7c3aed15 0%, transparent 70%)",
-          }}
-        />
-        <div className="relative z-10">
-          <span
-            className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-6"
-            style={{
-              background: "#7c3aed18",
-              border: "1px solid #7c3aed44",
-              color: "#c4b5fd",
-            }}
-          >
-            The Vision
-          </span>
-          <h1 className="text-5xl font-bold mb-6 leading-tight">
-            <span className="text-white">Logs were built for humans.</span>
-            <br />
-            <span className="gradient-text">
-              But the reader is now an AI.
-            </span>
-          </h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
-            Cypra sits between your log source and your AI coding agent,
-            doing the filtering first — so the agent arrives at the error,
-            not a wall of noise.
-          </p>
-        </div>
-      </section>
-
-      {/* The Problem */}
-      <section>
-        <SectionLabel>The Problem</SectionLabel>
-        <h2 className="text-3xl font-bold text-white mb-8">
-          1.2 million lines. One context window. Something has to give.
-        </h2>
-        <div className="grid md:grid-cols-2 gap-6">
-          {[
-            {
-              icon: "🪣",
-              title: "Context overflow",
-              body:
-                "Agents hit their limit mid-log and compact — losing state right before the relevant error.",
-            },
-            {
-              icon: "💸",
-              title: "Token waste",
-              body:
-                "Health checks, cache hits, and startup messages eat 90% of your budget before anything useful loads.",
-            },
-            {
-              icon: "🔍",
-              title: "No causal structure",
-              body:
-                "Raw logs are a flat stream. Agents can't distinguish root cause from consequence without explicit tags.",
-            },
-            {
-              icon: "⏳",
-              title: "Latency bottleneck",
-              body:
-                "Feeding full logs to an agent adds seconds of processing time and inference cost on every debug session.",
-            },
-          ].map((c) => (
-            <div key={c.title} className="card p-6">
-              <div className="text-3xl mb-3">{c.icon}</div>
-              <h3 className="text-white font-semibold text-lg mb-2">
-                {c.title}
-              </h3>
-              <p className="text-gray-400 text-sm leading-relaxed">{c.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* The Engine */}
-      <section>
-        <SectionLabel>The Engine</SectionLabel>
-        <h2 className="text-3xl font-bold text-white mb-4">
-          Drain-based log templating, built for agents
-        </h2>
-        <p className="text-gray-400 mb-10 max-w-2xl">
-          Cypra&apos;s core engine groups log lines into templates by identifying
-          what&apos;s constant vs. variable in each line — then renders a
-          compact oracle JSON your agent can actually reason over.
+        {/* Eyebrow */}
+        <p style={{
+          fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.12em",
+          textTransform: "uppercase", color: "#3d3a58", marginBottom: 28,
+        }}>
+          Vision
         </p>
 
-        {/* Pipeline steps */}
-        <div className="relative">
-          {/* connector line */}
-          <div
-            className="absolute left-6 top-10 bottom-10 w-px hidden md:block"
-            style={{
-              background:
-                "linear-gradient(to bottom, #7c3aed44, #7c3aed11)",
-            }}
-          />
-          <div className="space-y-4">
-            {[
-              {
-                step: "01",
-                title: "Ingest",
-                body:
-                  "Any line-oriented log stream: stdin, Kubernetes, AWS CloudWatch, Vercel, Docker, journalctl.",
-              },
-              {
-                step: "02",
-                title: "Preprocess",
-                body:
-                  "Parse format-specific structure (JSON logs, syslog, Spark, HDFS) and redact PII automatically.",
-              },
-              {
-                step: "03",
-                title: "Template with Drain",
-                body:
-                  "Group lines into templates; identify variable slots and compute their statistical distribution.",
-              },
-              {
-                step: "04",
-                title: "Score & tag evidence",
-                body:
-                  "Flag lines as root_cause, trigger, or consequence based on anomaly detection and causal ordering.",
-              },
-              {
-                step: "05",
-                title: "Render IncidentCapsule",
-                body:
-                  "Emit a strict JSON document with compression ratio, verbatim cited lines, and a routine summary.",
-              },
-            ].map((s) => (
-              <div key={s.step} className="flex gap-6 items-start md:pl-4">
-                <div
-                  className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-xs font-bold z-10"
-                  style={{
-                    background: "#0f0f1a",
-                    border: "1px solid #3b3560",
-                    color: "#c4b5fd",
-                  }}
-                >
-                  {s.step}
-                </div>
-                <div className="card flex-1 p-5">
-                  <h3 className="text-white font-semibold mb-1">{s.title}</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
-                    {s.body}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        <h1>
+          Logs for agents,<br />
+          <span className="gradient-text">not for humans</span>
+        </h1>
 
-      {/* IncidentCapsule */}
-      <section>
-        <SectionLabel>The Output</SectionLabel>
-        <h2 className="text-3xl font-bold text-white mb-4">
-          The IncidentCapsule
-        </h2>
-        <p className="text-gray-400 mb-8 max-w-2xl">
+        <p style={{ color: "#3d3a58", marginTop: 8, marginBottom: 48, fontSize: "0.82rem", letterSpacing: "0.01em" }}>
+          June 2025
+        </p>
+
+        <hr />
+
+        {/* Section 1 */}
+        <h2>The last log was written to be read by a human.</h2>
+
+        <p>
+          For thirty years, the mental model was simple. A server writes a line.
+          A person opens a terminal and reads it. When volume grew, people built
+          dashboards — Kibana, Datadog, Grafana — visual layers on top of the
+          stream so a human could still glance and orient. The interface changed.
+          The reader didn't.
+        </p>
+
+        <p>
+          Every advance in observability was an advance in making logs more
+          human-readable. Structured logging so you could filter without grep.
+          Distributed tracing so a single request could be followed across a dozen
+          services. Dashboards, alerts, on-call rotations — all of it designed
+          around the assumption that a person would eventually show up, scroll,
+          and figure it out.
+        </p>
+
+        <blockquote>
+          The dashboard is a beautiful, elaborate apology for the fact that
+          nobody can read the logs anymore.
+        </blockquote>
+
+        <p>
+          And the volume kept winning. One microservice now emits millions of
+          lines a day. A real incident spans the whole fleet at once. Most
+          platform work is still a person at a terminal at 3am, running{" "}
+          <code>kubectl</code> against one pod at a time, scrolling, guessing,
+          paging the next person when they run out of guesses.
+        </p>
+
+        <hr />
+
+        {/* Section 2 */}
+        <h2>The reader changed.</h2>
+
+        <p>
+          Debugging runs through an agent now. Claude Code, Codex, whatever you
+          point at the incident. And the agent inherits a stack built for eyes
+          it does not have. It cannot glance at a dashboard. It cannot scroll
+          forever. Its memory is finite and it pays by the token.
+        </p>
+
+        <p>
+          So we hand it the same firehose we could never read ourselves, and we
+          watch it do what we did: take a thin slice, miss the line that mattered,
+          run out of room.
+        </p>
+
+        <blockquote>
+          The infrastructure was built for the wrong reader.
+        </blockquote>
+
+        <p>
+          When an agent tries to read logs for debugging, individual developers
+          burn enormous amounts of tokens and context on routine noise — normal
+          startup messages, cache hits, health checks — before the agent ever
+          reaches the error. Platform teams may have millions of lines per day
+          across thousands of pods. More than any agent context window can hold
+          at all. Tools like Claude Code already hit this wall and respond by
+          compacting mid-session, losing state. Cypra prevents that by
+          pre-processing logs before they reach the agent.
+        </p>
+
+        <hr />
+
+        {/* Section 3 — The engine */}
+        <h2>How it works.</h2>
+
+        <p>
+          The core insight is that most log lines are the same line, slightly
+          different. <code>GET /v1/users/123 200</code> and{" "}
+          <code>GET /v1/users/456 200</code> are not two pieces of information —
+          they are one template with a variable slot. Cypra uses a variant of
+          the <strong>Drain algorithm</strong> to group log lines into templates,
+          identify which tokens are constant and which are variable, and compute
+          statistical distributions over the variable slots.
+        </p>
+
+        <p>
+          The result is not a summary. Nothing is invented or paraphrased.
           Every evidence entry is a verbatim log line with a real line-number
-          citation — nothing invented or paraphrased. The agent gets
-          compression ratio, causal tags, and a routine summary in one document.
+          citation. What Cypra produces is a strict JSON document called an{" "}
+          <strong>IncidentCapsule</strong> — the smallest possible representation
+          that preserves full debugging signal.
         </p>
 
-        <div className="grid md:grid-cols-5 gap-6 items-start">
-          <div className="md:col-span-3 code-block p-5 overflow-x-auto">
-            <pre className="text-sm">
-              {capsuleExample.split("\n").map((line, i) => {
-                const roleColors: Record<string, string> = {
-                  root_cause: "#f87171",
-                  trigger: "#fbbf24",
-                  consequence: "#60a5fa",
-                };
-                const roleMatch = line.match(/"role": "(\w+)"/);
-                const color = roleMatch ? roleColors[roleMatch[1]] : undefined;
-                return (
-                  <span
-                    key={i}
-                    style={{ color: color ?? "#e2e8f0", display: "block" }}
-                  >
-                    {line}
-                  </span>
-                );
-              })}
-            </pre>
-          </div>
-
-          <div className="md:col-span-2 space-y-3">
-            {[
-              {
-                color: "#f87171",
-                role: "root_cause",
-                desc: "The line that actually caused the incident.",
-              },
-              {
-                color: "#fbbf24",
-                role: "trigger",
-                desc: "The preceding condition that enabled the failure.",
-              },
-              {
-                color: "#60a5fa",
-                role: "consequence",
-                desc: "Downstream effects cascading from the root cause.",
-              },
-            ].map((r) => (
-              <div
-                key={r.role}
-                className="p-4 rounded-lg text-sm"
-                style={{
-                  background: `${r.color}10`,
-                  border: `1px solid ${r.color}30`,
-                }}
-              >
-                <div
-                  className="font-mono font-bold mb-1"
-                  style={{ color: r.color }}
-                >
-                  {r.role}
-                </div>
-                <div className="text-gray-400">{r.desc}</div>
-              </div>
-            ))}
-            <div
-              className="p-4 rounded-lg text-sm"
-              style={{
-                background: "#7c3aed10",
-                border: "1px solid #7c3aed30",
-              }}
-            >
-              <div className="font-mono font-bold mb-1 text-violet-300">
-                compression: 8021
-              </div>
-              <div className="text-gray-400">
-                The capsule is 8,021× smaller than the raw input.
-              </div>
-            </div>
-          </div>
+        <div className="code-block" style={{ margin: "2rem 0" }}>
+          <pre style={{ color: "#64618a", fontSize: "11.5px", lineHeight: 2 }}>
+{`{
+  `}<span style={{ color: "#e2e0f0" }}>"service"</span>{`: "api",
+  `}<span style={{ color: "#e2e0f0" }}>"window"</span>{`: "14:22:11 to 15:22:11",
+  `}<span style={{ color: "#c4b5fd" }}>"compression"</span>{`: 8021,
+  `}<span style={{ color: "#e2e0f0" }}>"evidence"</span>{`: [
+    { "role": `}<span style={{ color: "#f87171" }}>"root_cause"</span>{`, "line": 412847, "text": "psycopg2.OperationalError" },
+    { "role": `}<span style={{ color: "#fbbf24" }}>"trigger"</span>{`,    "line": 412831, "text": "pool acquire 480ms" },
+    { "role": `}<span style={{ color: "#60a5fa" }}>"consequence"</span>{`, "line": 412854, "text": "pool exhausted, queue=18" }
+  ],
+  `}<span style={{ color: "#e2e0f0" }}>"routine_summary"</span>{`: { "total_lines": 1085399, "templates": 15 }
+}`}
+          </pre>
         </div>
-      </section>
 
-      {/* Benchmarks */}
-      <section>
-        <SectionLabel>Benchmarks</SectionLabel>
-        <h2 className="text-3xl font-bold text-white mb-4">
-          Better signal. Far fewer tokens.
-        </h2>
-        <p className="text-gray-400 mb-10 max-w-2xl">
-          Evaluated on LogHub-2.0 (42k lines × 14 systems) and an 80-window
-          agent diagnosis eval judged by GPT-4.5. Advantage emerges at 3,000+
-          line windows, where raw logs overflow context and evidence is lost.
+        <p>
+          The <em>compression</em> field tells you how many times smaller the
+          capsule is than the raw input — in this case, 8,021×. The agent
+          receives the capsule instead of the raw stream and arrives directly
+          at the causal chain: what triggered the failure, what the root cause
+          was, and what cascaded downstream.
         </p>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <div className="card p-6">
-            <h3 className="text-white font-semibold mb-4">
-              Parser benchmark vs Drain3
-            </h3>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-gray-500 text-left">
-                  <th className="pb-3">Metric</th>
-                  <th className="pb-3">Result</th>
-                </tr>
-              </thead>
-              <tbody className="space-y-2">
-                {[
-                  ["Grouping accuracy", "Identical"],
-                  ["Purity", "Identical"],
-                  ["Template accuracy", "+0.111 ↑"],
-                  ["Throughput", "88k lines/sec"],
-                ].map(([m, v]) => (
-                  <tr key={m} className="border-t border-gray-800">
-                    <td className="py-2 text-gray-400">{m}</td>
-                    <td
-                      className="py-2 font-mono font-semibold"
-                      style={{ color: "#c4b5fd" }}
-                    >
-                      {v}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <hr />
 
-          <div className="card p-6">
-            <h3 className="text-white font-semibold mb-4">
-              Agent diagnosis eval (3,000-line windows)
-            </h3>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-gray-500 text-left">
-                  <th className="pb-3">Comparison</th>
-                  <th className="pb-3">Δ Score</th>
-                  <th className="pb-3">Δ Tokens</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ["vs raw logs", "+0.146*", "−18,098"],
-                  ["vs Drain3", "+0.078*", "−143"],
-                ].map(([c, s, t]) => (
-                  <tr key={c} className="border-t border-gray-800">
-                    <td className="py-2 text-gray-400">{c}</td>
-                    <td
-                      className="py-2 font-mono font-semibold"
-                      style={{ color: "#4ade80" }}
-                    >
-                      {s}
-                    </td>
-                    <td
-                      className="py-2 font-mono text-gray-300"
-                    >
-                      {t}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="text-gray-600 text-xs mt-3">* p &lt; 0.01</p>
-          </div>
+        {/* Section 4 — Numbers */}
+        <h2>The numbers.</h2>
+
+        <p>
+          We benchmarked on <strong>LogHub-2.0</strong>, a labeled dataset of
+          42,000 lines across 14 production systems, and on an 80-window agent
+          diagnosis evaluation judged by GPT-4.5.
+        </p>
+
+        <p>
+          Against raw logs at 3,000-line windows — the realistic production case
+          where raw logs overflow the context budget and evidence is lost before
+          the agent reaches it — Cypra scores <strong>+0.146 higher</strong>{" "}
+          on agent diagnosis accuracy (p &lt; 0.001) while sending{" "}
+          <strong>18,098 fewer tokens</strong> per session.
+        </p>
+
+        <p>
+          Template accuracy is <strong>+0.111 better</strong> than bare Drain3
+          (the most popular open-source log parser), with identical grouping
+          accuracy and purity. The grouping engine runs at{" "}
+          <strong>88,000 lines per second</strong> on a single core.
+        </p>
+
+        <blockquote>
+          At small windows (&lt;300 lines), raw logs actually win — and we say so.
+          The advantage is specifically when volume exceeds what an agent can hold.
+        </blockquote>
+
+        <hr />
+
+        {/* Section 5 — Integration */}
+        <h2>How to use it.</h2>
+
+        <p>
+          Cypra integrates in three ways. Running <code>cypra setup</code> detects
+          Claude Code, installs a hook, and registers an MCP server — from that
+          point every log Claude Code reads goes through Cypra automatically.
+          For Codex or any MCP-compatible agent, <code>cypra mcp serve</code>{" "}
+          exposes <code>tail_aws_logs</code>, <code>tail_vercel</code>, and{" "}
+          <code>wrap</code> as tools.
+        </p>
+
+        <p>
+          For everything else, <code>cypra wrap --</code> is a drop-in prefix
+          that works with any log-emitting command:
+        </p>
+
+        <div className="code-block" style={{ margin: "1.5rem 0" }}>
+          <pre style={{ color: "#4a4870" }}>
+{`cypra wrap -- `}<span style={{ color: "#a78bfa" }}>kubectl logs -n prod api
+</span>{`cypra wrap -- `}<span style={{ color: "#a78bfa" }}>vercel logs --since 1h
+</span>{`cypra wrap -- `}<span style={{ color: "#a78bfa" }}>aws logs tail /prod/api
+</span>{`cypra wrap -- `}<span style={{ color: "#a78bfa" }}>docker compose logs api</span>
+          </pre>
         </div>
 
-        <div
-          className="p-5 rounded-xl text-sm text-gray-400 leading-relaxed"
-          style={{ background: "#7c3aed08", border: "1px solid #3b3560" }}
-        >
-          <strong className="text-violet-300">Honest caveat:</strong> at small
-          windows (&lt;300 lines) where raw logs fit the context budget, raw
-          logs actually win. Cypra&apos;s advantage is specifically when log
-          volume exceeds what an agent can hold — which is the realistic
-          production case.
-        </div>
-      </section>
+        <p>
+          Supported sources: Vercel, AWS CloudWatch, Railway, Kubernetes,
+          Docker, Datadog, Sentry, journalctl, and any stdout-emitting command.
+        </p>
 
-      {/* Integration */}
-      <section>
-        <SectionLabel>Integration</SectionLabel>
-        <h2 className="text-3xl font-bold text-white mb-8">
-          Works with every log source
-        </h2>
-        <div className="grid md:grid-cols-3 gap-5">
-          {[
-            {
-              title: "Claude Code",
-              badge: "Auto",
-              body:
-                "codag setup detects Claude Code, installs a hook, and registers an MCP server. Every log read goes through Cypra automatically.",
-              code: "cypra setup",
-            },
-            {
-              title: "Universal wrap",
-              badge: "Any source",
-              body:
-                "A drop-in CLI prefix that works with any log-emitting command over stdout.",
-              code: "cypra wrap -- kubectl logs -n prod api",
-            },
-            {
-              title: "MCP server",
-              badge: "Drop-in",
-              body:
-                "Run the MCP server and point any MCP-compatible agent at it. Tools: tail_aws_logs, tail_vercel, wrap.",
-              code: "cypra mcp serve",
-            },
-          ].map((i) => (
-            <div key={i.title} className="card p-6 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-white font-semibold">{i.title}</h3>
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full font-medium"
-                  style={{
-                    background: "#7c3aed22",
-                    color: "#c4b5fd",
-                    border: "1px solid #7c3aed44",
-                  }}
-                >
-                  {i.badge}
-                </span>
-              </div>
-              <p className="text-gray-400 text-sm leading-relaxed flex-1">
-                {i.body}
-              </p>
-              <div className="code-block p-3 text-xs text-violet-300 font-mono">
-                {i.code}
-              </div>
-            </div>
-          ))}
+        <hr />
+
+        {/* CTA */}
+        <div style={{ marginTop: 48 }}>
+          <p style={{ color: "#3d3a58", fontSize: "0.82rem", marginBottom: 24 }}>
+            See it working on your own logs — no signup required.
+          </p>
+          <Btn href="/compress" variant="primary" style={{ fontSize: "0.9rem", padding: "11px 28px" }}>
+            Try the compressor →
+          </Btn>
         </div>
 
-        {/* Supported sources */}
-        <div className="mt-8 flex flex-wrap gap-2">
-          {[
-            "Vercel",
-            "AWS CloudWatch",
-            "Railway",
-            "Kubernetes",
-            "Docker",
-            "Datadog",
-            "Sentry",
-            "journalctl",
-            "stdout",
-          ].map((s) => (
-            <span
-              key={s}
-              className="px-3 py-1 rounded-full text-xs text-gray-400"
-              style={{ background: "#1e1e2e", border: "1px solid #2a2a3a" }}
-            >
-              {s}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="text-center pb-12">
-        <div
-          className="rounded-2xl p-12 relative overflow-hidden"
-          style={{
-            background:
-              "linear-gradient(135deg, #0f0f1a 0%, #1a1030 50%, #0f0f1a 100%)",
-            border: "1px solid #3b3560",
-          }}
-        >
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse 60% 80% at 50% 50%, #7c3aed15 0%, transparent 70%)",
-            }}
-          />
-          <div className="relative z-10">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              See it working on your logs
-            </h2>
-            <p className="text-gray-400 mb-8 max-w-md mx-auto">
-              Paste any log file. Get an IncidentCapsule in seconds. No signup
-              required.
-            </p>
-            <Link
-              href="/compress"
-              style={{
-                background: "linear-gradient(135deg,#7c3aed,#5b21b6)",
-                color: "white",
-                display: "inline-block",
-                padding: "14px 40px",
-                borderRadius: "12px",
-                fontWeight: 700,
-                fontSize: "1rem",
-                textDecoration: "none",
-              }}
-            >
-              Try the compressor →
-            </Link>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-4"
-      style={{
-        background: "#7c3aed18",
-        border: "1px solid #7c3aed33",
-        color: "#c4b5fd",
-      }}
-    >
-      {children}
-    </div>
+      </div>
+    </article>
   );
 }

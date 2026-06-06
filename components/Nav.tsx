@@ -1,64 +1,43 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Btn from "./Btn";
 
 export default function Nav() {
   const path = usePathname();
-
   return (
-    <nav
-      className="sticky top-0 z-50 flex items-center justify-between px-6 py-4"
-      style={{
-        background: "rgba(10,10,15,0.85)",
-        backdropFilter: "blur(16px)",
-        borderBottom: "1px solid #1e1e2e",
-      }}
-    >
-      <Link href="/" className="flex items-center gap-2 group">
-        <div
-          className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold"
-          style={{ background: "linear-gradient(135deg,#7c3aed,#5b21b6)" }}
-        >
-          C
-        </div>
-        <span className="font-bold text-lg tracking-tight text-white">
+    <nav style={{
+      position: "sticky", top: 0, zIndex: 50,
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "16px 32px",
+      background: "rgba(8,8,16,0.88)",
+      backdropFilter: "blur(20px)",
+      borderBottom: "1px solid #10101e",
+    }}>
+      <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+        <div style={{
+          width: 26, height: 26, borderRadius: 7,
+          background: "#12103a",
+          border: "1px solid #2a2060",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 12, fontWeight: 800, color: "#a78bfa",
+        }}>C</div>
+        <span style={{ fontWeight: 700, fontSize: "0.95rem", color: "#e8e4f0", letterSpacing: "-0.03em" }}>
           cypra
         </span>
       </Link>
 
-      <div className="flex items-center gap-1">
-        <Link
-          href="/vision"
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-            path === "/vision"
-              ? "bg-violet-900/40 text-violet-300"
-              : "text-gray-400 hover:text-white hover:bg-white/5"
-          }`}
-        >
-          Vision
-        </Link>
-        <Link
-          href="/compress"
-          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-            path === "/compress"
-              ? "bg-violet-900/40 text-violet-300"
-              : "text-gray-400 hover:text-white hover:bg-white/5"
-          }`}
-        >
-          Compress
-        </Link>
+      <div style={{ display: "flex", gap: 32, alignItems: "center" }}>
+        {[{ href: "/vision", label: "Vision" }, { href: "/compress", label: "Compress" }].map(({ href, label }) => (
+          <Link key={href} href={href} className={`nav-link ${path === href ? "active" : ""}`}>
+            {label}
+          </Link>
+        ))}
       </div>
 
-      <Link
-        href="/compress"
-        className="btn-primary text-sm px-5 py-2 rounded-lg font-semibold"
-        style={{
-          background: "linear-gradient(135deg,#7c3aed,#5b21b6)",
-          color: "white",
-        }}
-      >
-        <span>Try it free →</span>
-      </Link>
+      <Btn href="/compress" variant="primary" style={{ fontSize: "0.82rem", padding: "7px 18px" }}>
+        Try free
+      </Btn>
     </nav>
   );
 }
