@@ -1,17 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #080810;
+  --bg: #060609;
+  --bg2: #0a0a10;
   --fg: #e8e4f0;
   --muted: #5a576e;
   --accent: #c4b5fd;
   --accent-dim: #7c3aed;
-  --border: #18182a;
+  --border: #16162a;
+  --border-bright: #22223a;
   --prose-max: 680px;
+  --red: #f87171;
+  --yellow: #fbbf24;
+  --blue: #60a5fa;
+  --green: #34d399;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; data-scroll-behavior: smooth; }
 
 body {
   background: var(--bg);
@@ -53,7 +59,6 @@ body {
 .prose strong { color: #e8e4f0; font-weight: 600; }
 .prose em { color: #c4b5fd; font-style: normal; }
 
-/* Pull quote */
 .prose blockquote {
   border-left: 2px solid #7c3aed66;
   padding: 4px 0 4px 24px;
@@ -64,7 +69,6 @@ body {
   font-style: normal;
 }
 
-/* Inline code */
 .prose code {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.82em;
@@ -75,7 +79,6 @@ body {
   color: #a78bfa;
 }
 
-/* Horizontal rule */
 .prose hr {
   border: none;
   height: 1px;
@@ -91,7 +94,7 @@ body {
   background-clip: text;
 }
 
-/* ── Inline stat ─── */
+/* ── Stat ─── */
 .stat-num {
   font-size: 2.6rem;
   font-weight: 800;
@@ -108,7 +111,7 @@ body {
   margin-top: 4px;
 }
 
-/* ── Minimal input ─── */
+/* ── Minimal textarea ─── */
 .minimal-textarea {
   width: 100%;
   background: transparent;
@@ -118,10 +121,11 @@ body {
   color: #c8c4dc;
   font-family: 'JetBrains Mono', monospace;
   font-size: 12.5px;
-  line-height: 1.8;
+  line-height: 1.9;
   caret-color: #a78bfa;
+  tab-size: 2;
 }
-.minimal-textarea::placeholder { color: #2e2c45; }
+.minimal-textarea::placeholder { color: #252338; }
 
 /* ── Code block ─── */
 .code-block {
@@ -135,23 +139,79 @@ body {
   overflow-x: auto;
 }
 
+/* ── Card ─── */
+.card {
+  background: #0c0c18;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.card-glow {
+  background: #0c0c18;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px #0c0c18, inset 0 1px 0 #ffffff08;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.card-glow:hover {
+  border-color: #2a2060;
+  box-shadow: 0 0 32px #7c3aed12, 0 0 0 1px #0c0c18, inset 0 1px 0 #ffffff08;
+}
+
+/* ── Badge ─── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+.badge-purple {
+  background: #7c3aed18;
+  color: #a78bfa;
+  border-color: #7c3aed33;
+}
+.badge-red {
+  background: #f8717118;
+  color: #f87171;
+  border-color: #f8717133;
+}
+.badge-yellow {
+  background: #fbbf2418;
+  color: #fbbf24;
+  border-color: #fbbf2433;
+}
+.badge-blue {
+  background: #60a5fa18;
+  color: #60a5fa;
+  border-color: #60a5fa33;
+}
+.badge-green {
+  background: #34d39918;
+  color: #34d399;
+  border-color: #34d39933;
+}
+
 /* ── Cursor glow ─── */
 #cursor-glow {
   position: fixed;
   pointer-events: none;
   z-index: 9999;
-  width: 480px;
-  height: 480px;
+  width: 600px;
+  height: 600px;
   border-radius: 50%;
-  background: radial-gradient(circle, #7c3aed14 0%, transparent 65%);
+  background: radial-gradient(circle, #7c3aed10 0%, transparent 65%);
   transform: translate(-50%, -50%);
   will-change: left, top;
-  transition: left 0.1s ease, top 0.1s ease;
+  transition: left 0.12s ease, top 0.12s ease;
 }
 
 /* ── Animations ─── */
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes fade-in {
@@ -162,13 +222,23 @@ body {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
-@keyframes shimmer {
+@keyframes shimmer-move {
   0%   { background-position: -200% center; }
   100% { background-position:  200% center; }
 }
-@keyframes count-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+@keyframes scan {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(600%); opacity: 0; }
 }
 
 .shimmer-text {
@@ -177,18 +247,23 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: shimmer 5s linear infinite;
+  animation: shimmer-move 5s linear infinite;
+}
+
+@keyframes shimmer {
+  0%   { opacity: 0.5; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.5; }
 }
 
 .animate-fade-up { animation: fade-up 0.7s cubic-bezier(.22,1,.36,1) both; }
-.delay-1 { animation-delay: 0.08s; }
-.delay-2 { animation-delay: 0.18s; }
-.delay-3 { animation-delay: 0.28s; }
-.delay-4 { animation-delay: 0.38s; }
+.delay-1 { animation-delay: 0.06s; }
+.delay-2 { animation-delay: 0.14s; }
+.delay-3 { animation-delay: 0.22s; }
+.delay-4 { animation-delay: 0.32s; }
+.delay-5 { animation-delay: 0.42s; }
 
-/* ── Buttons ─────────────────────────────────────────────────────────────── */
-
-/* Base — all buttons share this */
+/* ── Buttons ─── */
 .btn {
   position: relative;
   overflow: hidden;
@@ -207,11 +282,9 @@ body {
               box-shadow 0.2s ease, transform 0.12s cubic-bezier(.22,1,.36,1);
   -webkit-tap-highlight-color: transparent;
 }
-.btn:active {
-  transform: scale(0.95) !important;
-}
+.btn:active { transform: scale(0.95) !important; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* Ghost — blends into the dark bg, subtle border */
 .btn-ghost {
   background: #0d0d1a;
   color: #6b6888;
@@ -226,7 +299,6 @@ body {
   border-color: #2e2c48;
 }
 
-/* Primary — still purple but much darker, blends more */
 .btn-primary {
   background: #12103a;
   color: #a78bfa;
@@ -240,10 +312,9 @@ body {
   background: #1a1650;
   color: #c4b5fd;
   border-color: #4a3a90;
-  box-shadow: 0 0 24px #7c3aed18;
+  box-shadow: 0 0 28px #7c3aed22;
 }
 
-/* Flat text button — for "clear", "copy json", "load sample" */
 .btn-text {
   background: none;
   border: none;
@@ -252,11 +323,8 @@ body {
   font-size: 0.75rem;
   border-radius: 4px;
 }
-.btn-text:hover {
-  color: #7a7890;
-}
+.btn-text:hover { color: #7a7890; }
 
-/* Ripple effect */
 .btn .ripple {
   position: absolute;
   border-radius: 50%;
@@ -265,10 +333,7 @@ body {
   animation: ripple-out 0.55s ease-out forwards;
   pointer-events: none;
 }
-
-@keyframes ripple-out {
-  to { transform: scale(4); opacity: 0; }
-}
+@keyframes ripple-out { to { transform: scale(4); opacity: 0; } }
 
 /* ── Nav ─── */
 .nav-link {
@@ -281,6 +346,9 @@ body {
   letter-spacing: -0.01em;
 }
 .nav-link:hover, .nav-link.active { color: var(--fg); }
+.nav-link.active {
+  color: #c4b5fd;
+}
 
 /* ── Divider ─── */
 .divider {
@@ -299,18 +367,55 @@ body {
   margin-top: 6px;
 }
 
-/* ── Compress panel ─── */
-.panel {
-  background: #0a0a14;
+/* ── Feature card hover ─── */
+.feature-card {
+  background: #09090f;
   border: 1px solid #16162a;
-  border-radius: 12px;
-  overflow: hidden;
+  border-radius: 16px;
+  padding: 28px;
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s cubic-bezier(.22,1,.36,1);
+  cursor: default;
 }
-.panel-header {
-  padding: 10px 16px;
+.feature-card:hover {
+  border-color: #2a2060;
+  box-shadow: 0 8px 40px #7c3aed14, inset 0 1px 0 #ffffff06;
+  transform: translateY(-2px);
+}
+
+/* ── Terminal card ─── */
+.terminal-card {
+  background: #08080f;
+  border: 1px solid #18182e;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px #00000080, 0 0 0 1px #0d0d1a;
+}
+.terminal-titlebar {
+  background: #0e0e1c;
   border-bottom: 1px solid #16162a;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.panel-dot { width: 8px; height: 8px; border-radius: 50%; }
+.terminal-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+
+/* ── Evidence card ─── */
+.evidence-card {
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: background 0.15s;
+}
+
+/* ── Scan line (animated) ─── */
+.scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #7c3aed66, transparent);
+  animation: scan 4s ease-in-out infinite;
+  pointer-events: none;
+}
