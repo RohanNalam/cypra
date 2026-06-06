@@ -34,11 +34,19 @@ function getSession() {
   return id;
 }
 
+interface ClaudeAnalysis {
+  narrative: string;
+  evidence: { index: number; role: string; explanation: string }[];
+}
+
 export default function CompressPage() {
   const [input, setInput] = useState("");
   const [service, setService] = useState("api");
   const [capsule, setCapsule] = useState<IncidentCapsule | null>(null);
   const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<ClaudeAnalysis | null>(null);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [view, setView] = useState<"visual" | "json">("visual");
   const [sid, setSid] = useState("");
   const [copied, setCopied] = useState(false);
@@ -51,11 +59,40 @@ export default function CompressPage() {
   function run() {
     if (!input.trim()) return;
     setLoading(true);
+    setAnalysis(null);
+    setAnalyzeError(null);
     setTimeout(() => {
-      setCapsule(compress(input, service || "service"));
+      const result = compress(input, service || "service");
+      setCapsule(result);
       setLoading(false);
       setView("visual");
+      // Auto-run Claude analysis if there are anomalies
+      if (result.evidence.length > 0) {
+        runAnalysis(result, input);
+      }
     }, 350);
+  }
+
+  async function runAnalysis(cap: IncidentCapsule, raw: string) {
+    setAnalyzing(true);
+    setAnalyzeError(null);
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ capsule: cap, rawSample: raw.slice(0, 2000) }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "API error");
+      }
+      const data = await res.json();
+      setAnalysis(data.analysis);
+    } catch (e) {
+      setAnalyzeError(e instanceof Error ? e.message : "Analysis failed");
+    } finally {
+      setAnalyzing(false);
+    }
   }
 
   function copyJson() {
@@ -63,6 +100,20 @@ export default function CompressPage() {
     navigator.clipboard.writeText(JSON.stringify(capsule, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  // Merge Claude's role/explanation into evidence items
+  function getEnrichedEvidence() {
+    if (!capsule) return [];
+    if (!analysis) return capsule.evidence.map(ev => ({ ...ev, explanation: null }));
+    return capsule.evidence.map((ev, i) => {
+      const claudeItem = analysis.evidence.find(a => a.index === i + 1);
+      return {
+        ...ev,
+        role: claudeItem ? claudeItem.role : ev.role,
+        explanation: claudeItem ? claudeItem.explanation : null,
+      };
+    });
   }
 
   return (
@@ -79,7 +130,6 @@ export default function CompressPage() {
           <span style={{ fontSize: "0.78rem", color: "#7a7890", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
             Compress
           </span>
-          {/* Service input inline */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: "0.75rem", color: "#7a7890" }}>service</span>
             <input
@@ -107,11 +157,11 @@ export default function CompressPage() {
               {sid.slice(0, 8)}
             </span>
           )}
-          <Btn variant="text" onClick={() => { setInput(SAMPLE); setCapsule(null); }}>
+          <Btn variant="text" onClick={() => { setInput(SAMPLE); setCapsule(null); setAnalysis(null); setAnalyzeError(null); }}>
             load sample
           </Btn>
           {input && (
-            <Btn variant="text" onClick={() => { setInput(""); setCapsule(null); }}>
+            <Btn variant="text" onClick={() => { setInput(""); setCapsule(null); setAnalysis(null); setAnalyzeError(null); }}>
               clear
             </Btn>
           )}
@@ -155,9 +205,8 @@ export default function CompressPage() {
                 Cypra groups lines into templates, tags anomalies
                 with causal roles, and returns an IncidentCapsule.
                 <br /><br />
-                <span style={{ color: "#18182a" }}>
-                  All processing runs in your browser.
-                  Nothing leaves your machine.
+                <span style={{ color: "#7c3aed", fontSize: "0.72rem" }}>
+                  ✦ Claude AI analyzes evidence roles automatically.
                 </span>
               </p>
             </div>
@@ -221,6 +270,38 @@ export default function CompressPage() {
                     </div>
                   </div>
 
+                  {/* Claude Narrative */}
+                  {(analyzing || analysis?.narrative) && (
+                    <div style={{
+                      borderLeft: "2px solid #2d1f5e",
+                      paddingLeft: 16,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: "0.65rem", color: "#7c3aed", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600 }}>
+                          Claude Analysis
+                        </span>
+                        {analyzing && (
+                          <span style={{ fontSize: "0.65rem", color: "#5a5870" }}>
+                            analyzing…
+                          </span>
+                        )}
+                      </div>
+                      {analyzing && !analysis && (
+                        <div style={{ height: 14, width: "70%", background: "#12121e", borderRadius: 4, animation: "shimmer 1.5s ease-in-out infinite" }} />
+                      )}
+                      {analysis?.narrative && (
+                        <p style={{ fontSize: "0.82rem", color: "#b0aac4", lineHeight: 1.75, margin: 0 }}>
+                          {analysis.narrative}
+                        </p>
+                      )}
+                      {analyzeError && (
+                        <p style={{ fontSize: "0.75rem", color: "#f87171", margin: 0 }}>
+                          {analyzeError}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Evidence */}
                   {capsule.evidence.length > 0 ? (
                     <div>
@@ -228,7 +309,7 @@ export default function CompressPage() {
                         Evidence · {capsule.evidence.length} lines
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                        {capsule.evidence.map((ev, i) => (
+                        {getEnrichedEvidence().map((ev, i) => (
                           <div key={i} style={{
                             display: "flex", gap: 16, alignItems: "flex-start",
                             padding: "14px 0",
@@ -245,7 +326,7 @@ export default function CompressPage() {
                                 {ev.role}
                               </span>
                             </div>
-                            {/* Text */}
+                            {/* Text + explanation */}
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{
                                 fontSize: "0.78rem", color: "#b0aac4",
@@ -254,8 +335,15 @@ export default function CompressPage() {
                               }}>
                                 {ev.text}
                               </div>
-                              <div style={{ fontSize: "0.65rem", color: "#5a5870", marginTop: 3 }}>
-                                line {ev.line.toLocaleString()}
+                              <div style={{ display: "flex", gap: 12, marginTop: 4, alignItems: "baseline" }}>
+                                <div style={{ fontSize: "0.65rem", color: "#5a5870" }}>
+                                  line {ev.line.toLocaleString()}
+                                </div>
+                                {ev.explanation && (
+                                  <div style={{ fontSize: "0.68rem", color: "#4a4870", lineHeight: 1.5, flex: 1 }}>
+                                    {ev.explanation}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
