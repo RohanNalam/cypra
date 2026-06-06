@@ -26,12 +26,22 @@ const ROLE_COLORS: Record<string, string> = {
   consequence: "#60a5fa",
 };
 
+const STORAGE_KEY = "cypra_session";
+
 function getSession() {
   if (typeof window === "undefined") return "";
   const k = "cypra_sid";
   let id = localStorage.getItem(k);
   if (!id) { id = crypto.randomUUID(); localStorage.setItem(k, id); }
   return id;
+}
+
+interface SavedSession {
+  input: string;
+  service: string;
+  capsule: IncidentCapsule;
+  analysis: ClaudeAnalysis | null;
+  savedAt: number;
 }
 
 interface ClaudeAnalysis {
@@ -50,9 +60,42 @@ export default function CompressPage() {
   const [view, setView] = useState<"visual" | "json">("visual");
   const [sid, setSid] = useState("");
   const [copied, setCopied] = useState(false);
+  const [restored, setRestored] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { setSid(getSession()); }, []);
+  // Restore last session on mount
+  useEffect(() => {
+    setSid(getSession());
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const saved: SavedSession = JSON.parse(raw);
+        // Only restore if less than 24 hours old
+        if (Date.now() - saved.savedAt < 86_400_000) {
+          setInput(saved.input);
+          setService(saved.service);
+          setCapsule(saved.capsule);
+          setAnalysis(saved.analysis);
+          setRestored(true);
+        }
+      }
+    } catch { /* ignore corrupt storage */ }
+  }, []);
+
+  // Persist session whenever capsule changes
+  useEffect(() => {
+    if (!capsule) return;
+    try {
+      const session: SavedSession = {
+        input,
+        service,
+        capsule,
+        analysis,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    } catch { /* ignore storage errors */ }
+  }, [capsule, analysis, input, service]);
 
   const lines = input.split("\n").filter(l => l.trim()).length;
 
@@ -61,12 +104,12 @@ export default function CompressPage() {
     setLoading(true);
     setAnalysis(null);
     setAnalyzeError(null);
+    setRestored(false);
     setTimeout(() => {
       const result = compress(input, service || "service");
       setCapsule(result);
       setLoading(false);
       setView("visual");
-      // Auto-run Claude analysis if there are anomalies
       if (result.evidence.length > 0) {
         runAnalysis(result, input);
       }
@@ -82,11 +125,8 @@ export default function CompressPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ capsule: cap, rawSample: raw.slice(0, 2000) }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "API error");
-      }
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setAnalysis(data.analysis);
     } catch (e) {
       setAnalyzeError(e instanceof Error ? e.message : "Analysis failed");
@@ -102,7 +142,15 @@ export default function CompressPage() {
     setTimeout(() => setCopied(false), 1500);
   }
 
-  // Merge Claude's role/explanation into evidence items
+  function clearAll() {
+    setInput("");
+    setCapsule(null);
+    setAnalysis(null);
+    setAnalyzeError(null);
+    setRestored(false);
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  }
+
   function getEnrichedEvidence() {
     if (!capsule) return [];
     if (!analysis) return capsule.evidence.map(ev => ({ ...ev, explanation: null }));
@@ -149,6 +197,11 @@ export default function CompressPage() {
               {lines.toLocaleString()} lines
             </span>
           )}
+          {restored && (
+            <span style={{ fontSize: "0.68rem", color: "#5a5870", fontStyle: "italic" }}>
+              restored
+            </span>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -157,11 +210,11 @@ export default function CompressPage() {
               {sid.slice(0, 8)}
             </span>
           )}
-          <Btn variant="text" onClick={() => { setInput(SAMPLE); setCapsule(null); setAnalysis(null); setAnalyzeError(null); }}>
+          <Btn variant="text" onClick={() => { setInput(SAMPLE); setCapsule(null); setAnalysis(null); setAnalyzeError(null); setRestored(false); }}>
             load sample
           </Btn>
           {input && (
-            <Btn variant="text" onClick={() => { setInput(""); setCapsule(null); setAnalysis(null); setAnalyzeError(null); }}>
+            <Btn variant="text" onClick={clearAll}>
               clear
             </Btn>
           )}
@@ -270,37 +323,57 @@ export default function CompressPage() {
                     </div>
                   </div>
 
-                  {/* Claude Narrative */}
-                  {(analyzing || analysis?.narrative) && (
-                    <div style={{
-                      borderLeft: "2px solid #2d1f5e",
-                      paddingLeft: 16,
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontSize: "0.65rem", color: "#7c3aed", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600 }}>
-                          Claude Analysis
-                        </span>
-                        {analyzing && (
-                          <span style={{ fontSize: "0.65rem", color: "#5a5870" }}>
-                            analyzing…
-                          </span>
-                        )}
-                      </div>
-                      {analyzing && !analysis && (
-                        <div style={{ height: 14, width: "70%", background: "#12121e", borderRadius: 4, animation: "shimmer 1.5s ease-in-out infinite" }} />
+                  {/* Claude Narrative — always visible when there's content or error */}
+                  <div style={{ borderLeft: "2px solid #2d1f5e", paddingLeft: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                      <span style={{ fontSize: "0.65rem", color: "#7c3aed", letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600 }}>
+                        Claude Analysis
+                      </span>
+                      {analyzing && (
+                        <span style={{ fontSize: "0.65rem", color: "#5a5870" }}>analyzing…</span>
                       )}
-                      {analysis?.narrative && (
-                        <p style={{ fontSize: "0.82rem", color: "#b0aac4", lineHeight: 1.75, margin: 0 }}>
-                          {analysis.narrative}
-                        </p>
-                      )}
-                      {analyzeError && (
-                        <p style={{ fontSize: "0.75rem", color: "#f87171", margin: 0 }}>
-                          {analyzeError}
-                        </p>
+                      {analyzeError && !analyzing && (
+                        <Btn
+                          variant="text"
+                          onClick={() => capsule && runAnalysis(capsule, input)}
+                          style={{ fontSize: "0.65rem", color: "#7c3aed", padding: 0 }}
+                        >
+                          retry
+                        </Btn>
                       )}
                     </div>
-                  )}
+
+                    {analyzing && !analysis && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {[70, 90, 55].map((w, i) => (
+                          <div key={i} style={{
+                            height: 12, width: `${w}%`,
+                            background: "#12121e", borderRadius: 4,
+                            animation: "shimmer 1.5s ease-in-out infinite",
+                            animationDelay: `${i * 0.15}s`,
+                          }} />
+                        ))}
+                      </div>
+                    )}
+
+                    {analyzeError && !analyzing && (
+                      <p style={{ fontSize: "0.75rem", color: "#f87171", margin: 0, lineHeight: 1.6 }}>
+                        {analyzeError}
+                      </p>
+                    )}
+
+                    {analysis?.narrative && (
+                      <p style={{ fontSize: "0.82rem", color: "#b0aac4", lineHeight: 1.75, margin: 0 }}>
+                        {analysis.narrative}
+                      </p>
+                    )}
+
+                    {!analyzing && !analyzeError && !analysis && capsule.evidence.length === 0 && (
+                      <p style={{ fontSize: "0.75rem", color: "#3d3a58", margin: 0 }}>
+                        No anomalies to analyze.
+                      </p>
+                    )}
+                  </div>
 
                   {/* Evidence */}
                   {capsule.evidence.length > 0 ? (
@@ -315,7 +388,6 @@ export default function CompressPage() {
                             padding: "14px 0",
                             borderTop: i === 0 ? "none" : "1px solid #0e0e18",
                           }}>
-                            {/* Role */}
                             <div style={{ flexShrink: 0, width: 90, paddingTop: 1 }}>
                               <span style={{
                                 fontSize: "0.68rem", fontWeight: 600,
@@ -326,7 +398,6 @@ export default function CompressPage() {
                                 {ev.role}
                               </span>
                             </div>
-                            {/* Text + explanation */}
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{
                                 fontSize: "0.78rem", color: "#b0aac4",
@@ -335,8 +406,8 @@ export default function CompressPage() {
                               }}>
                                 {ev.text}
                               </div>
-                              <div style={{ display: "flex", gap: 12, marginTop: 4, alignItems: "baseline" }}>
-                                <div style={{ fontSize: "0.65rem", color: "#5a5870" }}>
+                              <div style={{ display: "flex", gap: 12, marginTop: 4, alignItems: "baseline", flexWrap: "wrap" }}>
+                                <div style={{ fontSize: "0.65rem", color: "#5a5870", flexShrink: 0 }}>
                                   line {ev.line.toLocaleString()}
                                 </div>
                                 {ev.explanation && (

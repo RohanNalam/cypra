@@ -4,6 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(req: NextRequest) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
+  }
+
   try {
     const body = await req.json();
     const { capsule, rawSample } = body as {
@@ -71,7 +75,10 @@ Rules:
     } catch {
       const match = textBlock.text.match(/\{[\s\S]*\}/);
       if (!match) {
-        return NextResponse.json({ error: "Could not parse Claude response" }, { status: 500 });
+        return NextResponse.json(
+          { error: `Could not parse Claude response: ${textBlock.text.slice(0, 200)}` },
+          { status: 500 }
+        );
       }
       parsed = JSON.parse(match[0]);
     }
@@ -79,6 +86,7 @@ Rules:
     return NextResponse.json({ analysis: parsed });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[analyze] Claude API error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
