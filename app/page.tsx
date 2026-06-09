@@ -163,6 +163,7 @@ const FEATURES = [
     title: "88k lines per second",
     desc: "Drain algorithm groups log templates, strips routine noise, and extracts only the lines that matter. Zero data invented.",
     color: "#a78bfa",
+    rgb: "167,139,250",
     gradColors: ["#0d001a", "#08000f", "#1a0050", "#07000a"] as [string, string, string, string],
   },
   {
@@ -171,6 +172,7 @@ const FEATURES = [
     title: "Claude tags every line",
     desc: "Claude AI reads the compressed evidence and labels root causes, triggers, and consequences — with a plain-English narrative.",
     color: "#c4b5fd",
+    rgb: "196,181,253",
     gradColors: ["#150040", "#08000f", "#1a0060", "#050010"] as [string, string, string, string],
   },
   {
@@ -179,6 +181,7 @@ const FEATURES = [
     title: "MCP · CLI · API",
     desc: "One command installs an MCP server. Works with Claude Code, Codex, Cursor, and any agent that reads logs.",
     color: "#60a5fa",
+    rgb: "96,165,250",
     gradColors: ["#001840", "#00000f", "#001a60", "#000510"] as [string, string, string, string],
   },
 ];
@@ -242,6 +245,7 @@ export default function Home() {
               fontSize: "clamp(2.8rem, 5.5vw, 5rem)",
               fontWeight: 800, lineHeight: 1.05,
               letterSpacing: "-0.04em", marginBottom: 28,
+              minHeight: "2.2em",
             }}>
               <span style={{ color: "#e8e4f0" }}>Logs rebuilt<br />for </span>
               <Typewriter />
@@ -372,14 +376,15 @@ export default function Home() {
           </h2>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
-          {FEATURES.map((f, i) => (
+        {/* Asymmetric bento grid: large card + tall card on row one, wide horizontal card on row two */}
+        <div style={{ display: "grid", gridTemplateColumns: "7fr 5fr", gap: 16 }}>
+          {FEATURES.slice(0, 2).map((f, i) => (
             <div
               key={f.label}
               data-reveal
               data-reveal-delay={String(i + 1)}
               className="feature-card glass-card"
-              style={{ padding: 32 }}
+              style={{ padding: i === 0 ? "40px 40px 36px" : 32 }}
             >
               {/* MeshGradient texture background */}
               <div style={{ position: "absolute", inset: 0, borderRadius: 18, overflow: "hidden", opacity: 0.25 }}>
@@ -390,13 +395,12 @@ export default function Home() {
                 />
               </div>
 
-              <div style={{ position: "relative", zIndex: 1 }}>
-                {/* Icon + step number */}
+              <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
                   <div style={{
                     width: 44, height: 44, borderRadius: 12,
-                    background: `rgba(${f.color === "#a78bfa" ? "167,139,250" : f.color === "#c4b5fd" ? "196,181,253" : "96,165,250"},0.12)`,
-                    border: `1px solid rgba(${f.color === "#a78bfa" ? "167,139,250" : f.color === "#c4b5fd" ? "196,181,253" : "96,165,250"},0.25)`,
+                    background: `rgba(${f.rgb},0.12)`,
+                    border: `1px solid rgba(${f.rgb},0.25)`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     color: f.color, backdropFilter: "blur(8px)",
                   }}>
@@ -408,23 +412,118 @@ export default function Home() {
                 </div>
 
                 <span className="badge" style={{
-                  background: `rgba(${f.color === "#a78bfa" ? "167,139,250" : f.color === "#c4b5fd" ? "196,181,253" : "96,165,250"},0.12)`,
+                  background: `rgba(${f.rgb},0.12)`,
                   color: f.color,
-                  borderColor: `rgba(${f.color === "#a78bfa" ? "167,139,250" : f.color === "#c4b5fd" ? "196,181,253" : "96,165,250"},0.25)`,
-                  marginBottom: 14, display: "inline-flex", backdropFilter: "blur(8px)",
+                  borderColor: `rgba(${f.rgb},0.25)`,
+                  marginBottom: 14, display: "inline-flex", alignSelf: "flex-start", backdropFilter: "blur(8px)",
                 }}>
                   {f.label}
                 </span>
 
-                <h3 style={{ fontSize: "1.15rem", fontWeight: 700, color: "#e8e4f0", letterSpacing: "-0.025em", marginBottom: 12 }}>
+                <h3 style={{
+                  fontSize: i === 0 ? "1.5rem" : "1.15rem",
+                  fontWeight: 700, color: "#e8e4f0", letterSpacing: "-0.025em", marginBottom: 12,
+                }}>
                   {f.title}
                 </h3>
-                <p style={{ fontSize: "0.85rem", color: "#45426a", lineHeight: 1.8 }}>
+                <p style={{ fontSize: "0.85rem", color: "#45426a", lineHeight: 1.8, maxWidth: i === 0 ? 420 : undefined }}>
                   {f.desc}
                 </p>
+
+                {/* Mini stat strip on the large card */}
+                {i === 0 && (
+                  <div style={{
+                    marginTop: "auto", paddingTop: 28,
+                    display: "flex", gap: 28, flexWrap: "wrap",
+                  }}>
+                    {[
+                      { v: "0", l: "lines invented" },
+                      { v: "100%", l: "verbatim evidence" },
+                      { v: "1 core", l: "is all it needs" },
+                    ].map(s => (
+                      <div key={s.l}>
+                        <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "#c4b5fd", fontFamily: "var(--font-mono)", letterSpacing: "-0.02em" }}>{s.v}</div>
+                        <div style={{ fontSize: "0.62rem", color: "#2e2c45", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 3 }}>{s.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
+
+          {/* Wide horizontal card — full width */}
+          {(() => {
+            const f = FEATURES[2];
+            return (
+              <div
+                data-reveal
+                data-reveal-delay="3"
+                className="feature-card glass-card"
+                style={{ padding: "36px 40px", gridColumn: "1 / -1" }}
+              >
+                <div style={{ position: "absolute", inset: 0, borderRadius: 18, overflow: "hidden", opacity: 0.25 }}>
+                  <MeshGradient
+                    colors={f.gradColors}
+                    speed={0.15}
+                    style={{ width: "100%", height: "100%" }}
+                  />
+                </div>
+
+                <div style={{
+                  position: "relative", zIndex: 1,
+                  display: "flex", flexWrap: "wrap", gap: 40, alignItems: "center",
+                }}>
+                  <div style={{ flex: "1 1 360px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 12,
+                        background: `rgba(${f.rgb},0.12)`,
+                        border: `1px solid rgba(${f.rgb},0.25)`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        color: f.color, backdropFilter: "blur(8px)",
+                      }}>
+                        {f.icon}
+                      </div>
+                      <span className="badge" style={{
+                        background: `rgba(${f.rgb},0.12)`,
+                        color: f.color,
+                        borderColor: `rgba(${f.rgb},0.25)`,
+                        backdropFilter: "blur(8px)",
+                      }}>
+                        {f.label}
+                      </span>
+                      <span style={{ fontSize: "2.2rem", fontWeight: 800, color: "#0e0e1e", letterSpacing: "-0.05em", lineHeight: 1, marginLeft: "auto" }}>
+                        03
+                      </span>
+                    </div>
+                    <h3 style={{ fontSize: "1.3rem", fontWeight: 700, color: "#e8e4f0", letterSpacing: "-0.025em", marginBottom: 10 }}>
+                      {f.title}
+                    </h3>
+                    <p style={{ fontSize: "0.85rem", color: "#45426a", lineHeight: 1.8, maxWidth: 520 }}>
+                      {f.desc}
+                    </p>
+                  </div>
+
+                  {/* Inline terminal one-liner */}
+                  <div style={{
+                    background: "rgba(4,2,16,0.85)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 12,
+                    padding: "18px 24px",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "12px", lineHeight: 2.1,
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.4)",
+                    whiteSpace: "nowrap",
+                  }}>
+                    <div><span style={{ color: "#2e2c45" }}>$ </span><span style={{ color: "#a78bfa" }}>npx cypra setup</span></div>
+                    <div style={{ color: "#34d399" }}>✓ Claude Code hook installed</div>
+                    <div style={{ color: "#34d399" }}>✓ MCP server registered</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* CTA banner */}

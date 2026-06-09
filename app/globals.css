@@ -454,6 +454,13 @@ body {
 /* ── Parallax helper ─── */
 .parallax { will-change: transform; }
 
+/* ── Footer ─── */
+.footer-link {
+  font-size: 0.8rem; color: #45426a;
+  text-decoration: none; transition: color 0.2s;
+}
+.footer-link:hover { color: #c4b5fd; }
+
 /* ── Log Input Double-Bezel ─── */
 .log-input-shell {
   transition: border-color 0.3s cubic-bezier(.22,1,.36,1), box-shadow 0.3s cubic-bezier(.22,1,.36,1);

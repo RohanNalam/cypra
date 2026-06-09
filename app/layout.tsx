@@ -5,6 +5,7 @@ import Nav from "@/components/Nav";
 import GridBackground from "@/components/GridBackground";
 import CursorGlow from "@/components/CursorGlow";
 import ScrollReveal from "@/components/ScrollReveal";
+import Footer from "@/components/Footer";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -39,6 +40,7 @@ export default function RootLayout({
         <ScrollReveal />
         <Nav />
         <main className="flex-1 relative z-10">{children}</main>
+        <Footer />
       </body>
     </html>
   );
